@@ -5,8 +5,8 @@ import matplotlib.cm as cm
 import time
 import tt
 
-from read_starcd import Mesh
-from read_starcd import write_tecplot
+from tests.read_starcd import Mesh
+from tests.read_starcd import write_tecplot
 
 import solver_tt as Boltzmann_cyl
 import pickle

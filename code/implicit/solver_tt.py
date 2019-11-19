@@ -299,7 +299,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
     data = np.zeros((mesh.nc, 7))
  
     # Dummy tensor with [1, 1, 1, 1] ranks
-    F = tt.tensor(f_maxwell(vx, vy, vz, 200., 2e+23, 100., 0., 0., gas_params.Rg)).round(tol)
+    F = tt.rand([nv, nv, nv], 3, [1, 1, 1, 1])
     
     frob_norm_rhs = np.zeros(mesh.nc)
     frob_norm_iter = np.array([])
