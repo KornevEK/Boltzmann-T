@@ -48,14 +48,14 @@ l_s = delta * mu_s * v_s / p_s
 
 #print('v_s = ', v_s) 
 
-nv = 64
+nv = 30
 vmax = 22 * v_s
 
 #print('vmax =', vmax)
 
 CFL = 50.
 
-f = open('../mesh-cyl/mesh-cyl.pickle', 'rb')
+f = open('../mesh-shock/mesh-shock.pickle', 'rb')
 
 mesh = pickle.load(file = f)
 

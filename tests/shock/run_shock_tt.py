@@ -41,7 +41,7 @@ l_s = delta * mu_s * v_s / p_s
 
 #print 'v_s = ', v_s
 
-nv = 64
+nv = 30
 vmax = 22 * v_s
 
 hv = 2. * vmax / nv
@@ -62,11 +62,10 @@ problem = Boltzmann_cyl.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 's
                                            []], f_init = f_init)
 
 
-#print 'vmax =', vmax 
 
 CFL = 50.
 
-f = open('../mesh-cyl/mesh-cyl.pickle', 'rb')
+f = open('../mesh-shock/mesh-shock.pickle', 'rb')
 
 mesh = pickle.load(file = f)
 
