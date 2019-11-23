@@ -300,6 +300,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
  
     # Dummy tensor with [1, 1, 1, 1] ranks
     F = tt.rand([nv, nv, nv], 3, [1, 1, 1, 1])
+
     frob_norm_iter = np.array([])
 
     it = 0
@@ -351,9 +352,68 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
         #
         # update values, expclicit scheme
         #
+#        for ic in range(mesh.nc):
+#            f[ic] = (f[ic] + tau * rhs[ic]).round(tol)
+        '''
+        LU-SGS iteration
+        '''
+        #
+        # Backward sweep 
+        #
+        for ic in range(mesh.nc - 1, -1, -1):
+            df[ic] = rhs[ic].copy()
+        for ic in range(mesh.nc - 1, -1, -1):
+            # loop over neighbors of cell ic
+            for j in range(6):
+                jf = mesh.cell_face_list[ic, j]
+                icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
+                if mesh.cell_face_normal_direction[ic, j] == 1:
+                    vnm_loc = vnm[jf]
+                else:
+                    vnm_loc = -vnp[jf]
+                if (icn >= 0 ) and (icn > ic):
+#                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
+#                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn]) 
+                    df[ic] += -(mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
+                    * vnm_loc * df[icn] 
+                    df[ic] = df[ic].round(tol)
+            # divide by diagonal coefficient
+            diag_temp = ones_tt * (1/tau + nu[ic]) + diag[ic]
+            df[ic] = tt.multifuncrs([df[ic], diag_temp], mydivide, eps = tol, verb = 0)
+#            df[ic] = df[ic] * (1./(diag_scal[ic] + 1/tau + nu[ic] ))
+        #
+        # Forward sweep
+        # 
         for ic in range(mesh.nc):
-            f[ic] = (f[ic] + tau * rhs[ic]).round(tol)
-
+            # loop over neighbors of cell ic
+            incr = zero_tt.copy()
+            for j in range(6):
+                jf = mesh.cell_face_list[ic, j]
+                icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
+                if mesh.cell_face_normal_direction[ic, j] == 1:
+                    vnm_loc = vnm[jf]
+                else:
+                    vnm_loc = -vnp[jf]
+                if (icn >= 0 ) and (icn < ic):
+#                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
+#                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn] 
+                    incr+= -(mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
+                    * vnm_loc * df[icn] 
+                    incr = incr.round(tol)
+            # divide by diagonal coefficient
+            diag_temp = ones_tt * (1/tau + nu[ic]) + diag[ic]
+            df[ic] += tt.multifuncrs([incr, diag_temp], mydivide, eps = tol, verb = 0)
+#            df[ic] += incr * (1./(diag_scal[ic] + 1/tau + nu[ic] ))
+            df[ic] = df[ic].round(tol)
+        #
+        # Update values
+        #
+        for ic in range(mesh.nc):
+            f[ic] += df[ic]
+            f[ic] = f[ic].round(tol)
+        '''
+        end of LU-SGS iteration
+        '''
         # save rhs norm and tec tile
         if ((it % 100) == 0):     
             fig, ax = plt.subplots(figsize = (20,10))
@@ -370,7 +430,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             data[:, 5] = T[:]
             data[:, 6] = rank[:]
             
-            write_tecplot(mesh, data, 'tec_tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+            write_tecplot(mesh, data, 'cyl.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
 
     save_tt(filename, f, mesh.nc, nv)
     

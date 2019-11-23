@@ -4,8 +4,8 @@ from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 import time
 
-from tests.read_starcd import Mesh
-from tests.read_starcd import write_tecplot
+from read_starcd import Mesh
+from read_starcd import write_tecplot
 
 import solver as Boltzmann_cyl
 
@@ -26,12 +26,20 @@ T_l = 200.
 u_l = Mach * ((gas_params.g * gas_params.Rg * T_l) ** 0.5)
 T_w = 5.0 * T_l
 
-f_init = lambda x, y, z, vx, vy, vz: Boltzmann_cyl.f_maxwell(vx, vy, vz, T_l, n_l, u_l, 0., 0., gas_params.Rg)
+n_r = (gas_params.g + 1.) * Mach * Mach / ((gas_params.g - 1.) * Mach * Mach + 2.) * n_l
+u_r = ((gas_params.g - 1.) * Mach * Mach + 2.) / ((gas_params.g + 1.) * Mach * Mach) * u_l
+T_r = (2. * gas_params.g * Mach * Mach - (gas_params.g - 1.)) * ((gas_params.g - 1.) * Mach * Mach + 2.) / ((gas_params.g + 1) ** 2 * Mach * Mach) * T_l
+
+def f_init(x, y, z, vx, vy, vz): 
+    if (x <= 0.):
+        return Boltzmann_cyl.f_maxwell(vx, vy, vz, T_l, n_l, u_l, 0., 0., gas_params.Rg)
+    else:
+        return Boltzmann_cyl.f_maxwell(vx, vy, vz, T_r, n_r, u_r, 0., 0., gas_params.Rg)
 
 problem = Boltzmann_cyl.Problem(bc_type_list = ['sym-z', 'in', 'out', 'wall', 'sym-y'],
                                 bc_data = [[],
                                            [n_l, u_l, 0., 0., T_l],
-                                           [n_l, u_l, 0., 0., T_l],
+                                           [n_r, u_r, 0., 0., T_r],
                                            [T_w],
                                            []], f_init = f_init)
 n_s = n_l
@@ -53,9 +61,9 @@ vmax = 22 * v_s
 
 #print('vmax =', vmax)
 
-CFL = 50.
+CFL = .5
 
-f = open('../mesh-shock/mesh-shock.pickle', 'rb')
+f = open('./mesh-shock/mesh-shock.pickle', 'rb')
 
 mesh = pickle.load(file = f)
 
@@ -67,7 +75,7 @@ log.close()
 
 nt = 10 # 1200
 t1 = time.time()
-S = Boltzmann_cyl.solver(gas_params, problem, mesh, nt, vmax, nv, CFL, filename = 'cyl.npy', init = 'macro_restart.txt')
+S = Boltzmann_cyl.solver(gas_params, problem, mesh, nt, vmax, nv, CFL, filename = 'cyl.npy') #, init = 'macro_restart.txt')
 t2 = time.time()
 
 log = open('log.txt', 'a')

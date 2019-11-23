@@ -208,8 +208,7 @@ def solver(gas_params, problem, mesh, nt, vmax, nv, CFL, filename, init = '0'):
     T = np.zeros(mesh.nc)
     nu = np.zeros(mesh.nc)
     data = np.zeros((mesh.nc, 7))
-    
-    frob_norm_rhs = np.zeros(mesh.nc)
+
     frob_norm_iter = np.array([])
 
     it = 0
@@ -280,14 +279,11 @@ def solver(gas_params, problem, mesh, nt, vmax, nv, CFL, filename, init = '0'):
             data[:, 5] = T[:]
             data[:, 6] = np.zeros(mesh.nc)
             
-            write_tecplot(mesh, data, 'cyl.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+            write_tecplot(mesh, data, 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
             np.save(filename, np.ravel(f))
-        
-    for ic in range(mesh.nc):
-        frob_norm_rhs[ic] = np.linalg.norm(rhs[ic])
     
-    Return = namedtuple('Return', ['f', 'n', 'ux', 'uy', 'uz', 'T', 'p', 'frob_norm_iter', 'frob_norm_rhs'])
+    Return = namedtuple('Return', ['f', 'n', 'ux', 'uy', 'uz', 'T', 'p', 'frob_norm_iter'])
     
-    S = Return(f, n, ux, uy, uz, T, p, frob_norm_iter, frob_norm_rhs)
+    S = Return(f, n, ux, uy, uz, T, p, frob_norm_iter)
   
     return S

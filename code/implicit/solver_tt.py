@@ -300,8 +300,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
  
     # Dummy tensor with [1, 1, 1, 1] ranks
     F = tt.rand([nv, nv, nv], 3, [1, 1, 1, 1])
-    
-    frob_norm_rhs = np.zeros(mesh.nc)
+
     frob_norm_iter = np.array([])
 
     it = 0
@@ -431,15 +430,12 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             data[:, 5] = T[:]
             data[:, 6] = rank[:]
             
-            write_tecplot(mesh, data, 'cyl.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
-        
-    for ic in range(mesh.nc):
-        frob_norm_rhs[ic] = rhs[ic].norm()
+            write_tecplot(mesh, data, 'tec_tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
 
     save_tt(filename, f, mesh.nc, nv)
     
-    Return = namedtuple('Return', ['f', 'n', 'ux', 'uy', 'uz', 'T', 'p', 'rank', 'frob_norm_iter', 'frob_norm_rhs'])
+    Return = namedtuple('Return', ['f', 'n', 'ux', 'uy', 'uz', 'T', 'p', 'rank', 'frob_norm_iter'])
     
-    S = Return(f, n, ux, uy, uz, T, p, rank, frob_norm_iter, frob_norm_rhs)
+    S = Return(f, n, ux, uy, uz, T, p, rank, frob_norm_iter)
 
     return S
