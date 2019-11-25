@@ -104,7 +104,7 @@ data[:, 6] = np.zeros(mesh.nc)
 
 np.savetxt('macroparameters_data.txt', data) # save macroparameters
 
-write_tecplot(mesh, data, 'cyl.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+write_tecplot(mesh, data, 'tec.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
 
 log = open('log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')

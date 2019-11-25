@@ -5,8 +5,8 @@ import matplotlib.cm as cm
 import time
 import tt
 
-from tests.read_starcd import Mesh
-from tests.read_starcd import write_tecplot
+from read_starcd import Mesh
+from read_starcd import write_tecplot
 
 import solver_tt as Boltzmann_cyl
 import pickle
@@ -79,7 +79,7 @@ log.close()
 nt = 10
 t1 = time.time()
 S = Boltzmann_cyl.solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, 
-                            CFL, r, filename = 'file-out.npy', init = 'macro_restart.txt') # restart from macroparameters array
+                            CFL, r, filename = 'file-out.npy') #, init = 'macro_restart.txt') # restart from macroparameters array
 t2 = time.time()
 
 log = open('log.txt', 'a')
@@ -104,7 +104,7 @@ data[:, 6] = S.rank[:]
 
 np.savetxt('macroparameters_data.txt', data) # save macroparameters
 
-write_tecplot(mesh, data, 'cyl-tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+write_tecplot(mesh, data, 'tec-tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
 
 log = open('log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')

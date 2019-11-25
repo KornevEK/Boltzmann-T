@@ -22,7 +22,7 @@ log = open('log.txt', 'w+') #log file
 # Parameters for argon (default)
 gas_params = Boltzmann_cyl.GasParams()
 
-Mach = 10.
+Mach = 3.
 Kn = 0.564
 delta = 8.0 / (5 * np.pi**0.5 * Kn)
 n_l = 2e+23
@@ -94,7 +94,7 @@ log.close()
 nt = 1000
 t1 = time.time()
 S = Boltzmann_cyl.solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, 
-                            CFL, r, filename = 'file-out.npy') #, init = 'macro_restart.txt') # restart from macroparameters array
+                            CFL, r, filename = 'file-out.npy', init = 'cont.npy') #, init = 'macro_restart.txt') # restart from macroparameters array
 t2 = time.time()
 
 log = open('log.txt', 'a')
@@ -119,7 +119,7 @@ data[:, 6] = S.rank[:]
 
 np.savetxt('macroparameters_data.txt', data) # save macroparameters
 
-write_tecplot(mesh, data, 'cyl-tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
+write_tecplot(mesh, data, 'tec-tt.dat', ('n', 'ux', 'uy', 'uz', 'p', 'T', 'rank'))
 
 log = open('log.txt', 'a')
 log.write('Residual = ' + str('{0:5.2e}'.format(S.frob_norm_iter[-1]/S.frob_norm_iter[0])) + '\n')
