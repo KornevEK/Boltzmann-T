@@ -174,11 +174,11 @@ def solver(gas_params, problem, mesh, nt, vmax, nv, CFL, filename, init = '0'):
             f[i, :, :, :] = problem.f_init(x, y, z, vx, vy, vz) 
     else:
 #        restart from distribution function
-#        f = np.reshape(np.load(init), (mesh.nc, nv, nv, nv))
+        f = np.reshape(np.load(init), (mesh.nc, nv, nv, nv))
 #        restart form macroparameters array
-        init_data = np.loadtxt(init)
-        for ic in range(mesh.nc):
-            f[ic, :, :, :] = f_maxwell(vx, vy, vz, init_data[ic, 5], init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg)
+#        init_data = np.loadtxt(init)
+#        for ic in range(mesh.nc):
+#            f[ic, :, :, :] = f_maxwell(vx, vy, vz, init_data[ic, 5], init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg)
     
     # TODO: may be join f_plus and f_minus in one array
     f_plus = np.zeros((mesh.nf, nv, nv, nv)) # Reconstructed values on the right

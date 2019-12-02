@@ -272,12 +272,12 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             f[i] = problem.f_init(x, y, z, vx, vy, vz)
     else:
 #        restart from distribution function
-#        f = load_tt(init, mesh.nc, nv)
+        f = load_tt(init, mesh.nc, nv)
 #        restart form macroparameters array
-        init_data = np.loadtxt(init)
-        for ic in range(mesh.nc):
-            f[ic] = tt.tensor(f_maxwell(vx, vy, vz, init_data[ic, 5], \
-             init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg), tol)
+#        init_data = np.loadtxt(init)
+#        for ic in range(mesh.nc):
+#            f[ic] = tt.tensor(f_maxwell(vx, vy, vz, init_data[ic, 5], \
+#             init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg), tol)
         
     # TODO: may be join f_plus and f_minus in one array
     f_plus = [None] * mesh.nf # Reconstructed values on the right
