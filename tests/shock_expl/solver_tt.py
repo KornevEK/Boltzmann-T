@@ -171,23 +171,6 @@ def load_tt(filename, L, N):
         
     return f
 
-def div_tt(a, b):
-    
-    a_list = a.to_list(a)
-    b_list = a.to_list(b)
-
-    c = tt.rand(a.n, 3, a.r)
-
-    c_list = c.to_list(c)
-
-    c_list[0] = a_list[0] / b_list[0]
-    c_list[1] = a_list[1] / b_list[1]
-    c_list[2] = a_list[2] / b_list[2]
-
-    c = c.from_list(c_list)
-
-    return c
-
 def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
               CFL, tol, filename, init = '0'):
     """Solve Boltzmann equation with model collision integral 
@@ -245,25 +228,40 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
 
     diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
     # precompute diag
-###
-#    for ic in range(mesh.nc):
-#        diag_temp = np.zeros((nv, nv, nv))
-#        for j in range(6):
-#            jf = mesh.cell_face_list[ic, j]
-#            vn_full = (mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy \
-#                       + mesh.face_normals[jf, 2] * vz) * mesh.cell_face_normal_direction[ic, j]
-#            vnp_full = np.where(vn_full > 0, vn_full, 0.)
-#            vn_abs_full = np.abs(vn_full)
-#            diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
-#        diag[ic] = tt.tensor(diag_temp)
-###
+    diag_full = np.zeros((mesh.nc, nv, nv, nv)) # part of diagonal coefficient in implicit scheme
+    # precompute diag
+    for ic in range(mesh.nc):
+        for j in range(6):
+            jf = mesh.cell_face_list[ic, j]
+            vn_tmp = mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy + mesh.face_normals[jf, 2] * vz
+            vnp_full = np.where(mesh.cell_face_normal_direction[ic, j] * vn_tmp[:, :, :] > 0,
+                                    mesh.cell_face_normal_direction[ic, j] * vn_tmp[:, :, :], 0.)
+            diag_full[ic, :, :, :] += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+    
     for ic in range(mesh.nc):
         diag_temp = np.zeros((nv, nv, nv))
         for j in range(6):
             jf = mesh.cell_face_list[ic, j]
-            diag_temp += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * np.sqrt(vx*vx + vy*vy + vz*vz)
-        diag[ic] = tt.tensor(diag_temp).round(1e-7, rmax = 1)
-
+            vn_full = (mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy \
+                       + mesh.face_normals[jf, 2] * vz) * mesh.cell_face_normal_direction[ic, j]
+            vnp_full = np.where(vn_full > 0, vn_full, 0.)
+            vn_abs_full = np.abs(vn_full)
+            diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+#            diag_temp += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vn_abs_full
+        diag[ic] = tt.tensor(diag_temp)
+    # Compute mean rank of diag
+    diag_rank = 0.
+    for ic in range(mesh.nc):
+        diag_rank += 0.5*(diag[ic].r[1] + diag[ic].r[2])
+    diag_rank = diag_rank / ic
+    print('diag_rank = ', diag_rank)
+    #
+    diag_scal = np.zeros(mesh.nc)
+    for ic in range(mesh.nc):
+        for j in range(6):
+            jf = mesh.cell_face_list[ic, j]
+            diag_scal[ic] += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
+    diag_scal *= np.max(np.abs(vx_)) * 3**0.5
     # set initial condition 
     f = [None] * mesh.nc
     if (init == '0'):
@@ -274,12 +272,12 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             f[i] = problem.f_init(x, y, z, vx, vy, vz)
     else:
 #        restart from distribution function
-        f = load_tt(init, mesh.nc, nv)
+#        f = load_tt(init, mesh.nc, nv)
 #        restart form macroparameters array
-#        init_data = np.loadtxt(init)
-#        for ic in range(mesh.nc):
-#            f[ic] = tt.tensor(f_maxwell(vx, vy, vz, init_data[ic, 5], \
-#             init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg), tol)
+        init_data = np.loadtxt(init)
+        for ic in range(mesh.nc):
+            f[ic] = tt.tensor(f_maxwell(vx, vy, vz, init_data[ic, 5], \
+             init_data[ic, 0], init_data[ic, 1], init_data[ic, 2], init_data[ic, 3], gas_params.Rg), tol)
         
     # TODO: may be join f_plus and f_minus in one array
     f_plus = [None] * mesh.nf # Reconstructed values on the right
@@ -302,7 +300,6 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
  
     # Dummy tensor with [1, 1, 1, 1] ranks
     F = tt.rand([nv, nv, nv], 3, [1, 1, 1, 1])
-
     frob_norm_iter = np.array([])
 
     it = 0
@@ -354,66 +351,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
         #
         # update values, expclicit scheme
         #
-#        for ic in range(mesh.nc):
-#            f[ic] = (f[ic] + tau * rhs[ic]).round(tol)
-        '''
-        LU-SGS iteration
-        '''
-        #
-        # Backward sweep 
-        #
-        for ic in range(mesh.nc - 1, -1, -1):
-            df[ic] = rhs[ic].copy()
-        for ic in range(mesh.nc - 1, -1, -1):
-            # loop over neighbors of cell ic
-            for j in range(6):
-                jf = mesh.cell_face_list[ic, j]
-                icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
-                if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = vnm[jf]
-                else:
-                    vnm_loc = -vnp[jf]
-                if (icn >= 0 ) and (icn > ic):
-#                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-#                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn]) 
-                    df[ic] += -(mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
-                    * vnm_loc * df[icn] 
-                    df[ic] = df[ic].round(tol)
-            # divide by diagonal coefficient
-            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag[ic]).round(1e-3, rmax = 1)
-            df[ic] = div_tt(df[ic], diag_temp)
-        #
-        # Forward sweep
-        # 
         for ic in range(mesh.nc):
-            # loop over neighbors of cell ic
-            incr = zero_tt.copy()
-            for j in range(6):
-                jf = mesh.cell_face_list[ic, j]
-                icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
-                if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = vnm[jf]
-                else:
-                    vnm_loc = -vnp[jf]
-                if (icn >= 0 ) and (icn < ic):
-#                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-#                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn] 
-                    incr+= -(mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
-                    * vnm_loc * df[icn] 
-                    incr = incr.round(tol)
-            # divide by diagonal coefficient
-            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag[ic]).round(1e-3, rmax = 1)
-            df[ic] += div_tt(incr, diag_temp)
-            df[ic] = df[ic].round(tol)
-        #
-        # Update values
-        #
-        for ic in range(mesh.nc):
-            f[ic] += df[ic]
-            f[ic] = f[ic].round(tol)
-        '''
-        end of LU-SGS iteration
-        '''
+            f[ic] = (f[ic] + tau * rhs[ic]).round(tol)
+
         # save rhs norm and tec tile
         if ((it % 100) == 0):     
             fig, ax = plt.subplots(figsize = (20,10))

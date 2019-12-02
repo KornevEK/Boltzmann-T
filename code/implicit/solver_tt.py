@@ -375,9 +375,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                 jf = mesh.cell_face_list[ic, j]
                 icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
                 if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = vnm[jf]
+                    vnm_loc = 0.5 * (vn[jf] - vn_abs[jf]) # vnm[jf]
                 else:
-                    vnm_loc = -vnp[jf]
+                    vnm_loc = - 0.5 * (vn[jf] + vn_abs[jf]) # -vnp[jf]
                 if (icn >= 0 ) and (icn > ic):
 #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
 #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn]) 
@@ -397,9 +397,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                 jf = mesh.cell_face_list[ic, j]
                 icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
                 if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = vnm[jf]
+                    vnm_loc = 0.5 * (vn[jf] - vn_abs[jf]) # vnm[jf]
                 else:
-                    vnm_loc = -vnp[jf]
+                    vnm_loc = - 0.5 * (vn[jf] + vn_abs[jf]) # -vnp[jf]
                 if (icn >= 0 ) and (icn < ic):
 #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
 #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn] 
