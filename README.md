@@ -1,3 +1,5 @@
+## Program
+
 Program complex for solving Boltzmann kinetic equation with the S-model collision integral in arbitrary spacial domain.
 
 A folder must contain the following files:
@@ -10,3 +12,4 @@ A folder must contain the following files:
 
 - `run_*.py` -- where parameters are set (CFL, velocities mesh)
 
+## Reference 
