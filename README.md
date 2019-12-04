@@ -8,7 +8,7 @@ A folder must contain the following files:
 
 - `read_starcd.py` -- preprocesses spacial mesh in starcd format
 
-- `solver.py / solver_tt.py` -- solving code (explicit or implicit)
+- `solver.py / solver_tt.py` -- solver code (explicit or implicit)
 
 - `run_*.py` -- where parameters are set (CFL, velocities mesh)
 
