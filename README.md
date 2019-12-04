@@ -1,6 +1,6 @@
 ## Program
 
-Program complex for solving Boltzmann kinetic equation with the S-model collision integral in arbitrary spacial domain.
+Program complex for solving Boltzmann kinetic equation with the S-model collision integral in arbitrary spacial domain using TT-format.
 
 A folder must contain the following files:
 
