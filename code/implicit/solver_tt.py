@@ -91,6 +91,8 @@ def comp_macro_param_and_j_tt(f, vx_, vx, vy, vz, vx_tt, vy_tt, vz_tt, v2, gas_p
     Rg = gas_params.Rg
     hv = vx_[1] - vx_[0]
     n = (hv ** 3) * tt.sum(f)
+    if n <= 0.:
+        n = 1e+10
 
     ux = (1. / n) * (hv ** 3) * tt.sum(vx_tt * f)
     uy = (1. / n) * (hv ** 3) * tt.sum(vy_tt * f)
@@ -99,7 +101,8 @@ def comp_macro_param_and_j_tt(f, vx_, vx, vy, vz, vx_tt, vy_tt, vz_tt, v2, gas_p
     u2 = ux*ux + uy*uy + uz*uz
     
     T = (1. / (3. * n * Rg)) * ((hv ** 3) * tt.sum((v2 * f)) - n * u2)
-
+    if T <= 0.:
+        T = 1.
     Vx = vx - ux
     Vy = vy - uy
     Vz = vz - uz
@@ -244,10 +247,13 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
     v2 = (vx_tt*vx_tt + vy_tt*vy_tt + vz_tt*vz_tt).round(tol)
 
     diag = [None] * mesh.nc # part of diagonal coefficient in implicit scheme
+    diag_r1 = [None] * mesh.nc
     # precompute diag
-
+    # simple approximation for v_abs
+    vn_abs_r1 = tt.tensor((vx**2 + vy**2 + vz**2)**0.5, rmax = 1)
     for ic in range(mesh.nc):
         diag_temp = np.zeros((nv, nv, nv))
+        diag_sc = 0.
         for j in range(6):
             jf = mesh.cell_face_list[ic, j]
             vn_full = (mesh.face_normals[jf, 0] * vx + mesh.face_normals[jf, 1] * vy \
@@ -255,6 +261,8 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             vnp_full = np.where(vn_full > 0, vn_full, 0.)
             vn_abs_full = np.abs(vn_full)
             diag_temp += (mesh.face_areas[jf] / mesh.cell_volumes[ic]) * vnp_full
+            diag_sc += 0.5 * (mesh.face_areas[jf] / mesh.cell_volumes[ic])
+        diag_r1[ic] = diag_sc * vn_abs_r1
         diag_tt_full = tt.tensor(diag_temp, 1e-7, rmax = 1).full()
         if (np.amax(diag_temp - diag_tt_full) > 0.):
             ind_max = np.unravel_index(np.argmax(diag_temp - diag_tt_full), diag_temp.shape)
@@ -356,6 +364,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
             rhs[ic] = rhs[ic].round(tol)
 
         frob_norm_iter = np.append(frob_norm_iter, np.sqrt(sum([(rhs[ic].norm())**2 for ic in range(mesh.nc)])))
+        resfile = open('res.txt', 'a+')
+        resfile.write('%10.5E \n'% (frob_norm_iter[-1]))
+        resfile.close()
         #
         # update values, expclicit scheme
         #
@@ -375,9 +386,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                 jf = mesh.cell_face_list[ic, j]
                 icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
                 if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = 0.5 * (vn[jf] - vn_abs[jf]) # vnm[jf]
+                    vnm_loc = 0.5 * (vn[jf] - vn_abs_r1) # vnm[jf]
                 else:
-                    vnm_loc = - 0.5 * (vn[jf] + vn_abs[jf]) # -vnp[jf]
+                    vnm_loc = - 0.5 * (vn[jf] + vn_abs_r1) # -vnp[jf]
                 if (icn >= 0 ) and (icn > ic):
 #                    df[ic] += -(0.5 * mesh.face_areas[jf] / mesh.cell_volumes[ic]) \
 #                        * (mesh.cell_face_normal_direction[ic, j] * vn[jf] * df[icn] + vn_abs[jf] * df[icn]) 
@@ -385,7 +396,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                     * vnm_loc * df[icn] 
                     df[ic] = df[ic].round(tol)
             # divide by diagonal coefficient
-            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag[ic]).round(1e-3, rmax = 1)
+            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag_r1[ic]).round(1e-3, rmax = 1)
             df[ic] = div_tt(df[ic], diag_temp)
         #
         # Forward sweep
@@ -397,9 +408,9 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                 jf = mesh.cell_face_list[ic, j]
                 icn = mesh.cell_neighbors_list[ic, j] # index of neighbor
                 if mesh.cell_face_normal_direction[ic, j] == 1:
-                    vnm_loc = 0.5 * (vn[jf] - vn_abs[jf]) # vnm[jf]
+                    vnm_loc = 0.5 * (vn[jf] - vn_abs_r1) # vnm[jf]
                 else:
-                    vnm_loc = - 0.5 * (vn[jf] + vn_abs[jf]) # -vnp[jf]
+                    vnm_loc = - 0.5 * (vn[jf] + vn_abs_r1) # -vnp[jf]
                 if (icn >= 0 ) and (icn < ic):
 #                    incr+= -(0.5 * mesh.face_areas[jf] /  mesh.cell_volumes[ic]) \
 #                    * (mesh.cell_face_normal_direction[ic, j] * vn[jf] + vn_abs[jf]) * df[icn] 
@@ -407,7 +418,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
                     * vnm_loc * df[icn] 
                     incr = incr.round(tol)
             # divide by diagonal coefficient
-            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag[ic]).round(1e-3, rmax = 1)
+            diag_temp = (ones_tt * (1/tau + nu[ic]) + diag_r1[ic]).round(1e-3, rmax = 1)
             df[ic] += div_tt(incr, diag_temp)
             df[ic] = df[ic].round(tol)
         #
@@ -420,7 +431,7 @@ def solver_tt(gas_params, problem, mesh, nt, nv, vx_, vx, vy, vz, \
         end of LU-SGS iteration
         '''
         # save rhs norm and tec tile
-        if ((it % 100) == 0):     
+        if ((it % 20) == 0):     
             fig, ax = plt.subplots(figsize = (20,10))
             line, = ax.semilogy(frob_norm_iter/frob_norm_iter[0])
             ax.set(title='$Steps =$' + str(it))
